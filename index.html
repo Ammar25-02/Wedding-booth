@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Ucapan Pengantin</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ucapan">
+<meta name="theme-color" content="#0d2b28">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0d2b28; --emerald: #134a43; --gold: #e3c78a; --gold-deep: #b8964f; --ivory: #fbf6ec; --rose: #e0607e;
+    --serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+    --sans: 'Jost', 'Avenir Next', -apple-system, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #000; color: var(--ivory); font-family: var(--sans); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+  #stage { position: fixed; inset: 0; }
+  video { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #live { object-fit: cover; }
+  #live.mirror { transform: scaleX(-1); }
+  #playback { object-fit: contain; background: #000; display: none; }
+  .veil { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to top, rgba(13,43,40,.94) 0%, rgba(13,43,40,.5) 32%, rgba(13,43,40,0) 62%); }
+
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: flex-end; text-align: center; padding: calc(24px + env(safe-area-inset-top)) 24px calc(56px + env(safe-area-inset-bottom)); }
+  .screen.on { display: flex; }
+  .center { justify-content: center; }
+  h1 { font-family: var(--serif); font-style: italic; font-weight: 500; color: var(--gold); font-size: clamp(48px, 7.5vw, 104px); line-height: .95; margin: 0 0 18px; }
+  .lede { font-weight: 300; font-size: clamp(19px, 2.3vw, 28px); line-height: 1.4; max-width: 32ch; margin: 0; }
+  .lede.en { font-size: clamp(15px, 1.7vw, 20px); opacity: .72; margin-top: 4px; }
+
+  .rec { margin-top: 36px; width: 136px; height: 136px; border-radius: 50%; border: 2px solid var(--gold); background: rgba(13,43,40,.35); display: grid; place-items: center; cursor: pointer; padding: 0; }
+  .rec::after { content: ''; width: 98px; height: 98px; border-radius: 50%; background: var(--rose); animation: breathe 2.6s ease-in-out infinite; }
+  @keyframes breathe { 0%,100% { box-shadow: 0 0 0 0 rgba(224,96,126,.55); } 50% { box-shadow: 0 0 0 16px rgba(224,96,126,0); } }
+  .hint { margin-top: 16px; font-size: 15px; opacity: .7; }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--ivory); outline-offset: 4px; }
+
+  #count { font-family: var(--serif); color: var(--gold); font-size: min(52vh, 44vw); line-height: 1; text-shadow: 0 4px 40px rgba(0,0,0,.45); }
+  #count.pop { animation: pop .9s ease-out; }
+  @keyframes pop { from { transform: scale(1.35); opacity: 0; } 25% { opacity: 1; } to { transform: scale(1); opacity: .9; } }
+  .ready { font-size: clamp(18px, 2vw, 24px); font-weight: 300; margin-top: 8px; }
+
+  .live-pill { position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 20px; display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px; background: rgba(13,43,40,.7); font-weight: 500; font-size: 17px; }
+  .live-pill::before { content: ''; width: 12px; height: 12px; border-radius: 50%; background: var(--rose); animation: blink 1s steps(2, start) infinite; }
+  @keyframes blink { to { visibility: hidden; } }
+  .ring-wrap { position: relative; width: 168px; height: 168px; background: none; border: 0; padding: 0; color: inherit; }
+  .ring-wrap svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring-wrap circle { fill: none; stroke-width: 6; }
+  .ring-track { stroke: rgba(251,246,236,.25); }
+  #ring { stroke: var(--gold); stroke-linecap: round; }
+  #secs { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--serif); font-size: 76px; }
+
+  .actions { display: flex; gap: 16px; margin-top: 28px; flex-wrap: wrap; justify-content: center; }
+  .btn { font: 500 20px var(--sans); padding: 18px 34px; border-radius: 999px; border: 2px solid var(--gold); min-width: 220px; position: relative; overflow: hidden; }
+  .btn.primary { background: var(--gold); color: var(--ink); }
+  .btn.ghost { background: rgba(13,43,40,.55); color: var(--ivory); }
+  .btn.primary .fill { position: absolute; inset: 0; background: var(--gold-deep); transform-origin: left; transform: scaleX(0); }
+  .btn.primary.running .fill { animation: fill var(--autosave, 20s) linear forwards; }
+  .btn span { position: relative; }
+  @keyframes fill { to { transform: scaleX(1); } }
+  .spinner { width: 54px; height: 54px; border-radius: 50%; border: 3px solid rgba(227,199,138,.3); border-top-color: var(--gold); animation: spin 1s linear infinite; margin-bottom: 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #thanks h1 { animation: rise .8s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+  .solid { background: var(--ink); }
+  #unmute { position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: none; }
+
+  /* Settings: hold the gear for 1.5 s so guests don't open it by accident */
+  .gear { position: absolute; top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(13,43,40,.5); color: var(--ivory); opacity: .3; font-size: 22px; z-index: 5; }
+  .gear.holding { opacity: 1; box-shadow: 0 0 0 4px var(--gold); transition: box-shadow 1.5s; }
+
+  dialog { border: 1px solid var(--gold-deep); border-radius: 18px; background: var(--ink); color: var(--ivory); width: min(600px, 94vw); max-height: 90vh; padding: 28px; font-family: var(--sans); overflow-y: auto; -webkit-user-select: text; user-select: text; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { font-family: var(--serif); font-weight: 500; font-size: 34px; margin: 0 0 18px; color: var(--gold); }
+  dialog h3 { font-family: var(--serif); font-weight: 500; font-size: 26px; margin: 26px 0 10px; color: var(--gold); }
+  .field { display: grid; gap: 6px; margin-bottom: 16px; font-size: 15px; }
+  .field.row { grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
+  select, input[type=text], input[type=number] { font: 16px var(--sans); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(227,199,138,.4); background: var(--emerald); color: var(--ivory); width: 100%; }
+  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--gold); }
+  .meter { height: 10px; border-radius: 6px; background: rgba(251,246,236,.15); overflow: hidden; }
+  #level { height: 100%; width: 0; background: var(--gold); }
+  .meta { font-size: 14px; opacity: .75; margin: 4px 0 12px; line-height: 1.5; }
+  .small { min-width: 0; padding: 12px 22px; font-size: 16px; }
+  .clips { list-style: none; padding: 0; margin: 12px 0 0; max-height: 240px; overflow-y: auto; border-top: 1px solid rgba(227,199,138,.2); }
+  .clips li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(227,199,138,.2); font-size: 14px; }
+  .clips button { font: 500 14px var(--sans); background: none; border: 1px solid var(--gold-deep); color: var(--gold); border-radius: 999px; padding: 6px 14px; }
+  #viewer { position: static; width: 100%; aspect-ratio: 16/9; display: none; margin-top: 12px; border-radius: 10px; background: #000; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    .btn.primary.running .fill { animation-duration: var(--autosave, 20s) !important; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="live" class="mirror" autoplay muted playsinline></video>
+  <video id="playback" playsinline></video>
+  <div class="veil" id="veil"></div>
+  <button class="gear" id="gearBtn" aria-label="Tetapan booth (tekan lama)">⚙</button>
+
+  <section class="screen" id="idle">
+    <h1 id="couple">Nama &amp; Nama</h1>
+    <p class="lede">Tinggalkan ucapan untuk pengantin</p>
+    <p class="lede en">Leave the couple a <span class="secs-label">15</span>-second video message</p>
+    <button class="rec" id="startBtn" aria-label="Mula merakam"></button>
+    <p class="hint">Tekan butang untuk mula</p>
+  </section>
+
+  <section class="screen center" id="countdown">
+    <div id="count">3</div>
+    <p class="ready">Bersedia… Get ready</p>
+  </section>
+
+  <section class="screen" id="recording">
+    <div class="live-pill">Merakam</div>
+    <button class="ring-wrap" id="stopBtn" aria-label="Berhenti merakam">
+      <svg viewBox="0 0 168 168"><circle class="ring-track" cx="84" cy="84" r="78"/><circle id="ring" cx="84" cy="84" r="78"/></svg>
+      <div id="secs">15</div>
+    </button>
+    <p class="hint">Ketik untuk berhenti awal</p>
+  </section>
+
+  <section class="screen" id="review">
+    <button class="btn ghost small" id="unmute"><span>Ketik untuk bunyi</span></button>
+    <p class="lede">Puas hati dengan ucapan anda?</p>
+    <p class="lede en">Happy with your message?</p>
+    <div class="actions">
+      <button class="btn ghost" id="retakeBtn"><span>Rakam semula</span></button>
+      <button class="btn primary" id="saveBtn"><span class="fill"></span><span>Simpan ucapan</span></button>
+    </div>
+    <p class="hint">Disimpan secara automatik dalam <span id="autoLeft">20</span> saat</p>
+  </section>
+
+  <section class="screen center solid" id="saving">
+    <div class="spinner"></div>
+    <p class="lede">Menyimpan…</p>
+  </section>
+
+  <section class="screen center solid" id="thanks">
+    <h1>Terima kasih</h1>
+    <p class="lede">Ucapan anda telah disimpan untuk pengantin.</p>
+    <p class="lede en">Your message has been saved for the couple.</p>
+  </section>
+
+  <section class="screen center solid" id="error">
+    <h1>Belum berjaya</h1>
+    <p class="lede" id="errorMsg"></p>
+    <div class="actions"><button class="btn primary" id="errorBtn"><span>Cuba lagi</span></button></div>
+  </section>
+</div>
+
+<dialog id="settings">
+  <h2>Tetapan booth</h2>
+  <label class="field">Kamera <select id="camSel"></select></label>
+  <label class="field">Resolusi
+    <select id="resSel">
+      <option value="2160">4K (3840×2160)</option>
+      <option value="1080">1080p (1920×1080)</option>
+      <option value="720">720p (1280×720)</option>
+    </select>
+  </label>
+  <label class="field">Mikrofon <select id="micSel"></select></label>
+  <div class="field">Paras mikrofon (cakap untuk uji)<div class="meter"><div id="level"></div></div></div>
+  <label class="field">Nama pengantin <input type="text" id="coupleIn"></label>
+  <label class="field">Tempoh rakaman (saat) <input type="number" id="secsIn" min="5" max="60" inputmode="numeric"></label>
+  <label class="field row"><input type="checkbox" id="mirrorIn"> Cermin paparan langsung</label>
+  <p class="meta" id="camInfo"></p>
+
+  <h3>Ucapan tersimpan</h3>
+  <p class="meta" id="storeInfo"></p>
+  <div class="actions" style="justify-content:flex-start;margin-top:8px">
+    <button class="btn primary small" id="exportBtn"><span>Eksport</span></button>
+  </div>
+  <p class="meta" id="exportInfo"></p>
+  <video id="viewer" controls playsinline></video>
+  <ul class="clips" id="clipList"></ul>
+
+  <div class="dlg-actions"><button class="btn ghost small" id="closeSettings"><span>Siap</span></button></div>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const live = $('live'), playback = $('playback'), veil = $('veil');
+
+/* ---------- Settings ---------- */
+const DEFAULTS = { couple: 'Nama & Nama', seconds: 15, countdown: 3, autoSave: 20, cam: '', mic: '', res: '1080', mirror: true };
+const RES = { '2160': [3840, 2160], '1080': [1920, 1080], '720': [1280, 720] };
+const load = () => { try { return JSON.parse(localStorage.getItem('booth-settings') || '{}'); } catch { return {}; } };
+const persist = () => { try { localStorage.setItem('booth-settings', JSON.stringify(S)); } catch {} };
+const qp = new URLSearchParams(location.search);
+const S = { ...DEFAULTS, ...load() };
+if (qp.get('names')) S.couple = qp.get('names');
+
+/* ---------- On-device storage (IndexedDB) ---------- */
+// Two stores: 'meta' (small: name, size…) and 'data' (the video bytes, same id).
+// Listing only touches 'meta', so 200 clips never get loaded into memory at once.
+let dbP = null;
+function db() {
+  return dbP ||= new Promise((res, rej) => {
+    const r = indexedDB.open('wedding-booth', 2);
+    r.onupgradeneeded = (ev) => {
+      const d = r.result, t = r.transaction;
+      d.createObjectStore('meta', { keyPath: 'id', autoIncrement: true });
+      d.createObjectStore('data');
+      // v1 kept everything in 'clips': move each one over, one at a time
+      if (ev.oldVersion === 1) {
+        const old = t.objectStore('clips');
+        old.openCursor().onsuccess = (e) => {
+          const cur = e.target.result;
+          if (!cur) { d.deleteObjectStore('clips'); return; }
+          const { data, ...m } = cur.value;
+          t.objectStore('meta').put(m);
+          t.objectStore('data').put(data, m.id);
+          cur.continue();
+        };
+      }
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function tx(stores, mode, fn) {
+  const d = await db();
+  return new Promise((res, rej) => {
+    const t = d.transaction(stores, mode);
+    const req = fn(t);
+    t.oncomplete = () => res(req && req.result);
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error || new Error('Storan penuh'));
+  });
+}
+const countClips = () => tx('meta', 'readonly', (t) => t.objectStore('meta').count());
+const listClips = () => tx('meta', 'readonly', (t) => t.objectStore('meta').getAll());
+const clipData = (id) => tx('data', 'readonly', (t) => t.objectStore('data').get(id));
+// Stored as ArrayBuffer: the most reliable format in Safari's IndexedDB
+const addClip = (meta, data) => tx(['meta', 'data'], 'readwrite', (t) => {
+  const r = t.objectStore('meta').add(meta);
+  r.onsuccess = () => t.objectStore('data').put(data, r.result);
+  return r;
+});
+
+function stamp() {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+const mb = (b) => (b / 1048576).toFixed(1) + ' MB';
+
+/* ---------- State ---------- */
+let stream = null, recorder = null, chunks = [], blob = null, blobUrl = null;
+let state = 'idle', timers = [], raf = 0, errorAction = null;
+
+function applyText() {
+  $('couple').textContent = S.couple;
+  document.querySelectorAll('.secs-label').forEach((e) => (e.textContent = S.seconds));
+  live.classList.toggle('mirror', S.mirror);
+}
+function show(name) {
+  state = name;
+  document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('on', s.id === name));
+  const reviewing = name === 'review';
+  live.style.display = reviewing ? 'none' : 'block';
+  playback.style.display = reviewing ? 'block' : 'none';
+  veil.style.opacity = name === 'countdown' ? 0.4 : 1;
+  $('gearBtn').style.display = name === 'idle' ? 'block' : 'none';
+}
+function clearTimers() { timers.forEach(clearTimeout); timers = []; cancelAnimationFrame(raf); }
+function fail(msg, action) { errorAction = action; $('errorMsg').textContent = msg; show('error'); }
+
+/* ---------- Camera + mic ---------- */
+function pickMime() {
+  const opts = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'];
+  return opts.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+}
+function constraints(useSaved) {
+  const [w, h] = RES[S.res] || RES['1080'];
+  const video = { width: { ideal: w }, height: { ideal: h }, frameRate: { ideal: 30 } };
+  if (useSaved && S.cam) video.deviceId = { exact: S.cam }; else video.facingMode = 'user';
+  const audio = { echoCancellation: false, autoGainControl: false, noiseSuppression: false };
+  if (useSaved && S.mic) audio.deviceId = { exact: S.mic };
+  return { video, audio };
+}
+async function openStream() {
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  try { stream = await navigator.mediaDevices.getUserMedia(constraints(true)); }
+  catch (e) {
+    if (e.name === 'OverconstrainedError' || e.name === 'NotFoundError') stream = await navigator.mediaDevices.getUserMedia(constraints(false));
+    else throw e;
+  }
+  live.srcObject = stream;
+  await live.play().catch(() => {});
+  attachMeter();
+  await listDevices();
+}
+async function listDevices() {
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  const fill = (sel, kind, current) => {
+    sel.innerHTML = '';
+    devs.filter((d) => d.kind === kind).forEach((d, i) => sel.add(new Option(d.label || `${kind} ${i + 1}`, d.deviceId)));
+    if (current) sel.value = current;
+  };
+  fill($('camSel'), 'videoinput', stream.getVideoTracks()[0]?.getSettings().deviceId);
+  fill($('micSel'), 'audioinput', stream.getAudioTracks()[0]?.getSettings().deviceId);
+}
+navigator.mediaDevices?.addEventListener?.('devicechange', () => { if (stream) listDevices(); });
+
+async function init() {
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    return fail('Peranti ini tidak menyokong rakaman video. Kemas kini iPadOS ke versi terkini.', init);
+  }
+  try {
+    await openStream();
+    applyText();
+    show('idle');
+  } catch (e) {
+    fail(e.name === 'NotAllowedError'
+      ? 'Akses kamera atau mikrofon disekat. Buka Tetapan (Settings) iPhone/iPad, benarkan Kamera dan Mikrofon untuk Safari, kemudian cuba lagi.'
+      : `Kamera atau mikrofon tidak dapat dibuka (${e.name}). Semak kabel USB-C, kemudian cuba lagi.`, init);
+  }
+}
+
+/* ---------- Mic meter ---------- */
+let audioCtx = null, analyser = null, meterSrc = null;
+function attachMeter() {
+  try {
+    audioCtx ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (meterSrc) meterSrc.disconnect();
+    meterSrc = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 1024;
+    meterSrc.connect(analyser);
+  } catch {}
+}
+function drawMeter() {
+  if (!$('settings').open || !analyser) return;
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  const rms = Math.sqrt(buf.reduce((a, v) => a + v * v, 0) / buf.length);
+  $('level').style.width = Math.min(100, rms * 400) + '%';
+  requestAnimationFrame(drawMeter);
+}
+
+/* ---------- Flow ---------- */
+function startFlow() {
+  clearTimers();
+  show('countdown');
+  let n = S.countdown;
+  const tick = () => {
+    if (n === 0) return startRecording();
+    const c = $('count');
+    c.textContent = n; c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+    n -= 1;
+    timers.push(setTimeout(tick, 1000));
+  };
+  tick();
+}
+function startRecording() {
+  chunks = [];
+  const mimeType = pickMime();
+  try {
+    recorder = new MediaRecorder(stream, { mimeType: mimeType || undefined, videoBitsPerSecond: 8_000_000, audioBitsPerSecond: 192_000 });
+  } catch { return fail('Rakaman gagal dimulakan. Cuba pilih resolusi lebih rendah dalam tetapan.', () => show('idle')); }
+  recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => { blob = new Blob(chunks, { type: (recorder.mimeType || mimeType || 'video/mp4').split(';')[0] }); toReview(); };
+  recorder.start(1000);
+  show('recording');
+  const total = S.seconds * 1000, t0 = performance.now();
+  const ring = $('ring'), C = 2 * Math.PI * 78;
+  ring.style.strokeDasharray = C;
+  const loop = () => {
+    const el = performance.now() - t0, left = Math.max(0, total - el);
+    $('secs').textContent = Math.ceil(left / 1000);
+    ring.style.strokeDashoffset = C * Math.min(1, el / total);
+    if (left > 0) raf = requestAnimationFrame(loop);
+  };
+  loop();
+  timers.push(setTimeout(stopRecording, total));
+}
+function stopRecording() { clearTimers(); if (recorder?.state === 'recording') recorder.stop(); }
+
+function toReview() {
+  if (blobUrl) URL.revokeObjectURL(blobUrl);
+  blobUrl = URL.createObjectURL(blob);
+  playback.src = blobUrl; playback.loop = true; playback.muted = false;
+  $('unmute').style.display = 'none';
+  show('review');
+  // Safari may block sound without a fresh tap: play muted and offer a tap for sound
+  playback.play().catch(() => { playback.muted = true; playback.play().catch(() => {}); $('unmute').style.display = 'block'; });
+  const btn = $('saveBtn');
+  btn.style.setProperty('--autosave', S.autoSave + 's');
+  btn.classList.remove('running'); void btn.offsetWidth; btn.classList.add('running');
+  let left = S.autoSave; $('autoLeft').textContent = left;
+  const count = () => { left -= 1; $('autoLeft').textContent = Math.max(0, left); if (left > 0) timers.push(setTimeout(count, 1000)); };
+  timers.push(setTimeout(count, 1000));
+  timers.push(setTimeout(save, S.autoSave * 1000));
+}
+async function save() {
+  if (!blob || state === 'saving') return;
+  clearTimers();
+  playback.pause();
+  $('saveBtn').classList.remove('running');
+  show('saving');
+  try {
+    const n = (await countClips()) + 1;
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const data = await blob.arrayBuffer();
+    await addClip({ name: `${stamp()}_guest-${String(n).padStart(3, '0')}.${ext}`, type: blob.type, size: data.byteLength, created: Date.now() }, data);
+    blob = null;
+    show('thanks');
+    timers.push(setTimeout(() => show('idle'), 4500));
+  } catch (e) {
+    fail(`Ucapan belum disimpan (${e.message || e.name}). Storan peranti mungkin penuh. Kosongkan ruang, kemudian cuba lagi.`, save);
+  }
+}
+function retake() { clearTimers(); playback.pause(); blob = null; $('saveBtn').classList.remove('running'); startFlow(); }
+
+/* ---------- Settings + export ---------- */
+const BATCH = 5;          // iPad share sheet handles a few large videos at a time
+let exportFrom = 0;
+
+// The share sheet must open straight from the tap (Safari rejects it after a slow
+// storage read), so the next batch is loaded ahead of time into `ready`.
+let ready = null, refreshId = 0, clipTotal = 0;
+
+async function refreshStore() {
+  const id = ++refreshId;
+  const clips = await listClips();
+  clipTotal = clips.length;
+  const total = clips.reduce((a, c) => a + c.size, 0);
+  let info = `${clips.length} ucapan, ${mb(total)}.`;
+  try { const est = await navigator.storage.estimate(); info += ` Ruang tersedia lebih kurang ${mb(est.quota - est.usage)}.`; } catch {}
+  $('storeInfo').textContent = info;
+  if (exportFrom >= clips.length) exportFrom = 0;
+  const to = Math.min(clips.length, exportFrom + BATCH);
+  const btn = $('exportBtn'), label = btn.querySelector('span');
+  ready = null;
+  btn.disabled = true;
+  label.textContent = clips.length ? 'Menyediakan…' : 'Tiada ucapan lagi';
+  const list = $('clipList'); list.innerHTML = '';
+  clips.slice().reverse().forEach((c) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${c.name} (${mb(c.size)})</span>`;
+    const b = document.createElement('button'); b.textContent = 'Tonton';
+    b.onclick = async () => {
+      const v = $('viewer'); if (v.src) URL.revokeObjectURL(v.src);
+      v.src = URL.createObjectURL(new Blob([await clipData(c.id)], { type: c.type }));
+      v.style.display = 'block'; v.play().catch(() => {});
+    };
+    li.appendChild(b); list.appendChild(li);
+  });
+  if (!clips.length) return;
+  const batch = clips.slice(exportFrom, to);
+  const files = [];
+  for (const c of batch) files.push(new File([await clipData(c.id)], c.name, { type: c.type }));
+  if (id !== refreshId) return;   // a newer refresh has started
+  ready = files;
+  btn.disabled = false;
+  label.textContent = `Eksport ${exportFrom + 1}–${to} daripada ${clips.length}`;
+}
+function exportBatch() {
+  const files = ready;
+  if (!files) return;
+  if (!navigator.canShare?.({ files })) { $('exportInfo').textContent = 'Perkongsian fail tidak disokong pada peranti ini.'; return; }
+  navigator.share({ files }).then(() => {
+    exportFrom += BATCH;
+    $('exportInfo').textContent = exportFrom >= clipTotal
+      ? 'Semua ucapan telah dieksport. Ucapan masih kekal dalam app ini sebagai sandaran.'
+      : 'Kumpulan ini selesai. Tekan Eksport sekali lagi untuk kumpulan seterusnya.';
+  }).catch((e) => {
+    if (e.name !== 'AbortError') $('exportInfo').textContent = `Eksport gagal (${e.name}). Mulakan semula app, kemudian cuba lagi.`;
+  }).finally(refreshStore);
+}
+async function openSettings() {
+  $('coupleIn').value = S.couple; $('secsIn').value = S.seconds; $('resSel').value = S.res; $('mirrorIn').checked = S.mirror;
+  const st = stream?.getVideoTracks()[0]?.getSettings() || {};
+  $('camInfo').textContent = `Kamera sebenar: ${st.width || '?'}×${st.height || '?'} @ ${Math.round(st.frameRate || 0)}fps. Format: ${pickMime().split(';')[0] || 'tiada'}.`;
+  $('exportInfo').textContent = '';
+  $('settings').showModal();
+  audioCtx?.resume(); drawMeter();
+  refreshStore();
+}
+async function changeDevice() {
+  S.cam = $('camSel').value; S.mic = $('micSel').value; S.res = $('resSel').value;
+  persist();
+  try { await openStream(); openSettings(); } catch (e) { alert('Peranti tidak dapat dibuka: ' + e.name); }
+}
+['camSel', 'micSel', 'resSel'].forEach((id) => $(id).addEventListener('change', changeDevice));
+$('mirrorIn').addEventListener('change', () => { S.mirror = $('mirrorIn').checked; persist(); applyText(); });
+$('coupleIn').addEventListener('input', () => { S.couple = $('coupleIn').value || DEFAULTS.couple; persist(); applyText(); });
+$('secsIn').addEventListener('change', () => { S.seconds = Math.max(5, Math.min(60, +$('secsIn').value || 15)); persist(); applyText(); });
+$('exportBtn').addEventListener('click', exportBatch);
+$('closeSettings').addEventListener('click', () => { $('viewer').pause(); refreshId++; ready = null; $('settings').close(); });
+
+// Long-press the gear for 1.5 s
+let holdT = 0;
+const gear = $('gearBtn');
+gear.addEventListener('pointerdown', () => { gear.classList.add('holding'); holdT = setTimeout(() => { gear.classList.remove('holding'); openSettings(); }, 1500); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => gear.addEventListener(ev, () => { clearTimeout(holdT); gear.classList.remove('holding'); }));
+gear.addEventListener('contextmenu', (e) => e.preventDefault());
+
+/* ---------- Inputs ---------- */
+let wakeLock = null;
+async function keepAwake() { try { if (!wakeLock && 'wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => (wakeLock = null)); } } catch {} }
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  keepAwake();
+  // iPadOS can stop the camera when the app goes to the background
+  if (state === 'idle' && (!stream || stream.getVideoTracks()[0]?.readyState === 'ended')) init();
+});
+let persisted = false;
+function firstTap() { keepAwake(); if (!persisted && navigator.storage?.persist) { persisted = true; navigator.storage.persist().catch(() => {}); } }
+
+$('startBtn').addEventListener('click', () => { firstTap(); if (state === 'idle') startFlow(); });
+$('stopBtn').addEventListener('click', stopRecording);
+$('saveBtn').addEventListener('click', save);
+$('retakeBtn').addEventListener('click', retake);
+$('unmute').addEventListener('click', () => { playback.muted = false; playback.currentTime = 0; playback.play(); $('unmute').style.display = 'none'; });
+$('errorBtn').addEventListener('click', () => errorAction && errorAction());
+document.addEventListener('keydown', (e) => {
+  if ($('settings').open || e.target.matches('input, select')) return;
+  const go = e.key === ' ' || e.key === 'Enter';
+  if (go) e.preventDefault();
+  if (state === 'idle' && go) { firstTap(); startFlow(); }
+  else if (state === 'recording' && go) stopRecording();
+  else if (state === 'review' && go) save();
+  else if (state === 'review' && e.key.toLowerCase() === 'r') retake();
+});
+// Block pinch-zoom and double-tap zoom on the kiosk
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('dblclick', (e) => e.preventDefault());
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+init();
+</script>
+</body>
+</html>
